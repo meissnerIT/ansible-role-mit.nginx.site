@@ -10,6 +10,7 @@
   user:
     name: "{{ group }}"
     home: /srv/www/{{ site }}/htdocs
+    create_home: no # avoid skell files
     shell: /bin/false
     system: yes
 
@@ -40,9 +41,10 @@
     group: "{{ group }}"
     mode: 0750
 
-- name: Enable group adm to read logs via ACL
+# doesn't work on session, don't know why
+- name: Enable group adm to read /srv/www/{{ site }}/logs via ACL
   acl:
-    path: /srv/www/{{ site }}/logs
+    path: /srv/www/{{ site }}/logs/
     entity: adm
     etype: group
     permissions: rx
@@ -52,6 +54,22 @@
     src: nginx-server-template.conf
     dest: /etc/nginx/conf.d/server-{{ site }}.conf
     force: "{{ nginx_overwrite_config | default('no') }}"
+
+- name: Create /etc/nginx/conf.d/server-{{ site }}.include
+  copy:
+    content: ''
+    dest: /etc/nginx/conf.d/server-{{ site }}.include
+    force: no
+  when: nginx_include_other|default(false)
+
+- name: Create /etc/nginx/conf.d/server-{{ site }}.htpasswd
+  copy:
+    content: ''
+    dest: /etc/nginx/conf.d/server-{{ site }}.htpasswd
+    force: no
+    group: www-data
+    mode: 0640
+  when: nginx_include_auth_basic|default(false)
 
 - name: Create /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
   template:
