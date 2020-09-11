@@ -5,6 +5,7 @@
   file:
     path: /srv/www/{{ site }}
     state: directory
+  when: create_dir|default(true)
 
 - name: Creating user {{ group }}
   user:
