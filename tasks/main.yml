@@ -26,6 +26,11 @@
   changed_when: "'is already a member of' not in adduser_wwwdata.stdout"
   notify: Reload nginx
 
+- name: Checking if /srv/www/{{ site }}/htdocs is a symbolic link
+  stat:
+    path: /srv/www/{{ site }}/htdocs
+  register: stat_htdocs
+
 - name: Creating /srv/www/{{ site }}/htdocs
   file:
     path: /srv/www/{{ site }}/htdocs
@@ -33,6 +38,7 @@
     owner: "{{ group }}"
     group: "{{ group }}"
     mode: 0770
+  when: sym.stat.islnk is not defined or stat_htdocs.stat.islnk == False
 
 - name: Creating /srv/www/{{ site }}/logs
   file:
