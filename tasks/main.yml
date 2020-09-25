@@ -74,7 +74,7 @@
 
 - name: Create /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
   template:
-    src: php-fpm-template.conf
+    src: php-fpm-pool-template.conf
     dest: /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
     force: "{{ php_fpm_overwrite_config | default('no') }}"
   when: php_version is defined
