@@ -56,6 +56,12 @@
     etype: group
     permissions: rx
 
+- name: Check deprecated conf.d/ssl-site (without .include)
+  command: ls /etc/nginx/conf.d/ssl-{{ site }}
+  register: cmd_ls
+  failed_when: cmd_ls.rc == 0
+  changed_when: no
+
 - name: Create /etc/nginx/conf.d/server-{{ site }}.conf
   template:
     src: nginx-server-template.conf
