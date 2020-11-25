@@ -1,4 +1,8 @@
 ---
 
+- set_fact:
+    type: site
+  when: type is not defined
+
 - include_tasks: "{{ type }}.yml"
 
