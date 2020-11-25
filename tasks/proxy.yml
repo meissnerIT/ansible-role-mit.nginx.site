@@ -1,0 +1,24 @@
+---
+
+- name: Create /etc/nginx/conf.d/server-{{ site }}.conf
+  template:
+    src: nginx-proxy-template.conf
+    dest: /etc/nginx/conf.d/server-{{ site }}.conf
+    force: "{{ nginx_overwrite_config | default('no') }}"
+
+- name: Create /etc/nginx/conf.d/server-{{ site }}.include
+  copy:
+    content: ''
+    dest: /etc/nginx/conf.d/server-{{ site }}.include
+    force: no
+  when: nginx_include_other|default(false)
+
+- name: Create /etc/nginx/conf.d/server-{{ site }}.htpasswd
+  copy:
+    content: ''
+    dest: /etc/nginx/conf.d/server-{{ site }}.htpasswd
+    force: no
+    group: www-data
+    mode: 0640
+  when: nginx_include_auth_basic|default(false)
+
