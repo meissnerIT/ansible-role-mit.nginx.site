@@ -48,6 +48,30 @@
     group: "{{ group }}"
     mode: 0750
 
+- name: Creating /srv/www/{{ site }}/tmp
+  file:
+    path: /srv/www/{{ site }}/tmp/php
+    state: directory
+  when: php_fpm_upload_limit is defined
+
+- name: Creating /srv/www/{{ site }}/tmp/nginx
+  file:
+    path: /srv/www/{{ site }}/tmp/nginx
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: 0770
+  when: php_fpm_upload_limit is defined
+
+- name: Creating /srv/www/{{ site }}/tmp/php
+  file:
+    path: /srv/www/{{ site }}/tmp/php
+    state: directory
+    owner: "{{ group }}"
+    group: "{{ group }}"
+    mode: 0770
+  when: php_fpm_upload_limit is defined
+
 # doesn't work on session, don't know why
 - name: Enable group adm to read /srv/www/{{ site }}/logs via ACL
   acl:
