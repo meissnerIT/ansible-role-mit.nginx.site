@@ -1,10 +1,19 @@
 ---
 
+- name: Setting defaults (1/2)
+  set_fact:
+    state: "{{ state|default('present') }}"
+
+- name: Setting defaults (2/2)
+  set_fact:
+    file_state_directory: "{{ 'absent' if (state=='absent') else 'directory' }}"
+    create_or_remove: "{{ 'Remove' if (state=='absent') else 'Create' }}"
+
 # Ensure default owner / group / mode (creating user fails without this)
-- name: Creating /srv/www/{{ site }}
+- name: "{{ create_or_remove }} /srv/www/{{ site }}"
   file:
     path: /srv/www/{{ site }}
-    state: directory
+    state: "{{ file_state_directory }}"
   when: create_dir|default(true)
 
 - name: Creating user {{ group }}
@@ -14,22 +23,26 @@
     create_home: no # avoid skell files
     shell: /bin/false
     system: yes
+  when: state!='absent'
 
 - name: Creating group {{ group }}
   group:
     name: "{{ group }}"
     system: yes
+  when: state!='absent'
 
 - name: Adding www-data to group {{ group }}
   shell: adduser www-data {{ group }}
   register: adduser_wwwdata
   changed_when: "'is already a member of' not in adduser_wwwdata.stdout"
   notify: Reload nginx
+  when: state!='absent'
 
 - name: Checking if /srv/www/{{ site }}/htdocs is a symbolic link
   stat:
     path: /srv/www/{{ site }}/htdocs
   register: stat_htdocs
+  when: state!='absent'
 
 - name: Creating /srv/www/{{ site }}/htdocs
   file:
@@ -38,7 +51,7 @@
     owner: "{{ group }}"
     group: "{{ group }}"
     mode: 0770
-  when: sym.stat.islnk is not defined or stat_htdocs.stat.islnk == False
+  when: state!='absent' and (sym.stat.islnk is not defined or stat_htdocs.stat.islnk == False)
 
 - name: Creating /srv/www/{{ site }}/logs
   file:
@@ -47,12 +60,13 @@
     owner: root
     group: "{{ group }}"
     mode: 0750
+  when: state!='absent'
 
 - name: Creating /srv/www/{{ site }}/tmp
   file:
     path: /srv/www/{{ site }}/tmp/php
     state: directory
-  when: php_fpm_upload_limit is defined
+  when: state!='absent' and php_fpm_upload_limit is defined
 
 - name: Creating /srv/www/{{ site }}/tmp/nginx
   file:
@@ -61,7 +75,7 @@
     owner: www-data
     group: www-data
     mode: 0770
-  when: php_fpm_upload_limit is defined
+  when: state!='absent' and php_fpm_upload_limit is defined
 
 - name: Creating /srv/www/{{ site }}/tmp/php
   file:
@@ -70,7 +84,7 @@
     owner: "{{ group }}"
     group: "{{ group }}"
     mode: 0770
-  when: php_fpm_upload_limit is defined
+  when: state!='absent' and php_fpm_upload_limit is defined
 
 # doesn't work on session, don't know why
 - name: Enable group adm to read /srv/www/{{ site }}/logs via ACL
@@ -79,6 +93,7 @@
     entity: adm
     etype: group
     permissions: rx
+  when: state!='absent'
 
 - name: Check deprecated conf.d/ssl-site (without .include)
   command: ls /etc/nginx/conf.d/ssl-{{ site }}
@@ -91,12 +106,21 @@
     src: nginx-server-template.conf
     dest: /etc/nginx/conf.d/server-{{ site }}.conf
     force: "{{ nginx_overwrite_config | default('no') }}"
+  when: state!='absent'
+
+- name: Remove /etc/nginx/conf.d/server-{{ site }}.conf
+  file:
+    dest: /etc/nginx/conf.d/server-{{ site }}.conf
+    state: absent
+  notify: Reload nginx
+  when: state=='absent'
 
 - name: Create /etc/nginx/conf.d/server-{{ site }}.include
   copy:
     content: ''
     dest: /etc/nginx/conf.d/server-{{ site }}.include
     force: no
+    state: "{{ state }}"
   when: nginx_include_other|default(false)
 
 - name: Create /etc/nginx/conf.d/server-{{ site }}.htpasswd
@@ -106,6 +130,7 @@
     force: no
     group: www-data
     mode: 0640
+    state: "{{ state }}"
   when: nginx_include_auth_basic|default(false)
 
 - name: Create /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
@@ -113,14 +138,22 @@
     src: php-fpm-pool-template.conf
     dest: /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
     force: "{{ php_fpm_overwrite_config | default('no') }}"
-  when: php_version is defined
   notify: Reload php{{ php_version }}-fpm
+  when: state!='absent' and php_version is defined
+
+- name: Remove /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
+  file:
+    dest: /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
+    state: absent
+  notify: Reload php{{ php_version }}-fpm
+  when: state=='absent'
 
 - name: Update /etc/update-facls.conf
   lineinfile:
     path: /etc/update-facls.conf
     regexp: '^/srv/www/{{ site }}/htdocs'
     line: '/srv/www/{{ site }}/htdocs {{ group }} {{ group }}'
+    state: "{{ state }}"
 
 - name: Allow execution of service commands via sudo
   template:
@@ -128,4 +161,23 @@
     dest: /etc/sudoers.d/local-group-{{ group }}
     mode: 0440
     validate: visudo -cf %s
+  when: state!='absent'
+
+- name: Remove sudoers file
+  file:
+    dest: /etc/sudoers.d/local-group-{{ group }}
+    state: absent
+  when: state=='absent'
+
+- name: Remove user {{ group }}
+  user:
+    name: "{{ group }}"
+    state: absent
+  when: state=='absent'
+
+- name: Remove group {{ group }}
+  group:
+    name: "{{ group }}"
+    state: absent
+  when: state=='absent'
 
