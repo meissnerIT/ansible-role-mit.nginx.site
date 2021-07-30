@@ -23,7 +23,7 @@
     create_home: no # avoid skell files
     shell: /bin/false
     system: yes
-  when: state!='absent'
+  when: (create_user|default(true)) and (state!='absent')
 
 - name: Creating group {{ group }}
   group:
@@ -130,8 +130,13 @@
     force: no
     group: www-data
     mode: 0640
-    state: "{{ state }}"
-  when: nginx_include_auth_basic|default(false)
+  when: nginx_include_auth_basic|default(false) and state!='absent'
+
+- name: Remove /etc/nginx/conf.d/server-{{ site }}.htpasswd
+  file:
+    dest: /etc/nginx/conf.d/server-{{ site }}.htpasswd
+    state: absent
+  when: state=='absent'
 
 - name: Create /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
   template:
