@@ -99,6 +99,7 @@
     entity: adm
     etype: group
     permissions: rx
+    state: present
   when: state!='absent'
 
 - name: Check deprecated conf.d/ssl-site (without .include)
