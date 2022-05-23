@@ -1,0 +1,54 @@
+---
+
+- name: Check if database.txt exists
+  stat:
+    path: "/srv/www/{{ site }}/database.txt"
+  register: database_txt_stat
+
+- name: Create password
+  set_fact:
+    # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/password_lookup.html
+    database_password: "{{ lookup('password', '/dev/null length=20') }}"
+  when: not database_txt_stat.stat.exists
+
+- name: Create database.txt
+  copy:
+    content: "{{ database_password }}"
+    dest: "/srv/www/{{ site }}/database.txt"
+    group: "{{ group }}"
+    mode: 0640
+  when: not database_txt_stat.stat.exists
+
+- name: Read password from database.txt
+  ansible.builtin.slurp:
+    src: "/srv/www/{{ site }}/database.txt"
+  register: database_txt_content
+
+- name: Read password from database.txt
+  set_fact:
+    database_password: "{{ database_txt_content.content|b64decode }}"
+
+#- name: Print returned information
+#  ansible.builtin.debug:
+#    msg: "{{ database_password }}"
+
+- name: Create database {{ database }}
+  delegate_to: web-db01.monheim.intern
+  mysql_db:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    name: "{{ database }}"
+    state: present
+
+- name: Create database user {{ database }}
+  delegate_to: web-db01.monheim.intern
+  mysql_user:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    name: "{{ database }}"
+    host: "%"
+    password: "{{ database_password }}"
+    priv: "{{ database }}.*:ALL"
+    # https://github.com/ansible-collections/community.mysql/search?q=tls_requires
+    tls_requires:
+      SSL:
+    state: present
+

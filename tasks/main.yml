@@ -6,3 +6,6 @@
 
 - include_tasks: "{{ type }}.yml"
 
+- include_tasks: database.yml
+  when: database is defined
+

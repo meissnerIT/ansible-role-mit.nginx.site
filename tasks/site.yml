@@ -3,6 +3,7 @@
 - name: Setting defaults (1/2)
   set_fact:
     state: "{{ state|default('present') }}"
+    update_facls_dir: "{{ 'ci' if (htdocslink is defined) else 'htdocs' }}"
 
 - name: Setting defaults (2/2)
   set_fact:
@@ -22,20 +23,21 @@
     state: "{{ file_state_directory }}"
   when: create_dir|default(true)
 
-- name: Creating user {{ group }}
-  user:
-    name: "{{ group }}"
-    home: /srv/www/{{ site }}/htdocs
-    create_home: no # avoid skell files
-    shell: /bin/false
-    system: yes
-  when: (create_user|default(true)) and (state!='absent')
-
 - name: Creating group {{ group }}
   group:
     name: "{{ group }}"
     system: yes
   when: state!='absent'
+
+- name: Creating user {{ group }}
+  user:
+    name: "{{ group }}"
+    group: "{{ group }}"
+    home: /srv/www/{{ site }}/htdocs
+    create_home: no # avoid skell files
+    shell: /bin/false
+    system: yes
+  when: (create_user|default(true)) and (state!='absent')
 
 - name: Adding www-data to group {{ group }}
   shell: adduser www-data {{ group }}
@@ -44,11 +46,25 @@
   notify: Reload nginx
   when: state!='absent'
 
-- name: Checking if /srv/www/{{ site }}/htdocs is a symbolic link
-  stat:
-    path: /srv/www/{{ site }}/htdocs
-  register: stat_htdocs
-  when: state!='absent'
+- name: Creating deploy dir
+  file:
+    path: /srv/www/{{ site }}/ci
+    state: directory
+    owner: "{{ group }}"
+    group: "{{ group }}"
+    mode: 0770
+  when: state!='absent' and htdocslink is defined
+
+- name: Creating link to htdocs
+  file:
+    src: "{{ htdocslink }}"
+    dest: /srv/www/{{ site }}/htdocs
+    state: link
+    owner: "{{ group }}"
+    group: "{{ group }}"
+    follow: no  # avoid error messages if link does not exists yet
+    force: yes  # avoid error messages if link does not exists yet
+  when: state!='absent' and htdocslink is defined
 
 - name: Creating /srv/www/{{ site }}/htdocs
   file:
@@ -57,7 +73,7 @@
     owner: "{{ group }}"
     group: "{{ group }}"
     mode: 0770
-  when: state!='absent' and (sym.stat.islnk is not defined or stat_htdocs.stat.islnk == False)
+  when: state!='absent' and htdocslink is not defined
 
 - name: Creating /srv/www/{{ site }}/logs
   file:
@@ -143,7 +159,7 @@
     force: no
     group: www-data
     mode: 0640
-  when: nginx_include_auth_basic|default(false) and state!='absent'
+  when: (nginx_create_htpasswd|default(false) or nginx_include_auth_basic|default(false)) and state!='absent'
 
 - name: Remove /etc/nginx/conf.d/server-{{ site }}.htpasswd
   file:
@@ -169,8 +185,8 @@
 - name: Update /etc/update-facls.conf
   lineinfile:
     path: /etc/update-facls.conf
-    regexp: '^/srv/www/{{ site }}/htdocs'
-    line: '/srv/www/{{ site }}/htdocs {{ group }} {{ group }}'
+    regexp: "^/srv/www/{{ site }}/{{ update_facls_dir }}"
+    line: "/srv/www/{{ site }}/{{ update_facls_dir }} {{ group }} {{ group }}"
     state: "{{ state }}"
 
 - name: Allow execution of service commands via sudo
@@ -186,6 +202,10 @@
     dest: /etc/sudoers.d/local-group-{{ group }}
     state: absent
   when: state=='absent'
+
+# https://docs.ansible.com/ansible/latest/user_guide/playbooks_handlers.html#controlling-when-handlers-run
+- name: Flush handlers
+  meta: flush_handlers
 
 - name: Remove user {{ group }}
   user:
