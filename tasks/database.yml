@@ -24,9 +24,11 @@
     src: "/srv/www/{{ site }}/database.txt"
   register: database_txt_content
 
-- name: Read password from database.txt
+- name: Set variable database_password from database.txt
   set_fact:
-    database_password: "{{ database_txt_content.content|b64decode }}"
+    # b64decode: slurps content is base64 encoded
+    # trim: If added via vi there might be an invisible "\n"
+    database_password: "{{ database_txt_content.content | b64decode | trim }}"
 
 #- name: Print returned information
 #  ansible.builtin.debug:
