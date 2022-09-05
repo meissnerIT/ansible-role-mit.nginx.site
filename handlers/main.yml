@@ -1,0 +1,19 @@
+---
+
+# we might iterate if we have multiple dns:
+# https://stackoverflow.com/questions/39299065/does-ansible-delegate-to-work-with-handlers
+
+- name: unbound configtest
+  delegate_to: "{{ mit_nginx_site_dns_host }}"
+  command: /usr/sbin/unbound-checkconf
+  register: unbound_configtest
+  listen: Reload unbound
+
+- name: Reload unbound
+  delegate_to: "{{ mit_nginx_site_dns_host }}"
+  service:
+    name: unbound
+    state: restarted
+  when: unbound_configtest.rc == 0
+  listen: Reload unbound
+

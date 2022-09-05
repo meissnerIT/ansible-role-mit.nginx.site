@@ -1,0 +1,17 @@
+---
+
+- name: Create /etc/hosts entry
+  lineinfile:
+    path: /etc/hosts
+    regexp: "^[0-9\\-].*{{ site }}"
+    line: "{{ dns_ip }} {{ site }}"
+
+- name: Create {{ site }} entry on dns server
+  delegate_to: "{{ mit_nginx_site_dns_host }}"
+  lineinfile:
+    path: /etc/unbound/unbound.conf.d/local.conf
+    regexp: '    local-data: "{{ site }}. IN A "'
+    line:   '    local-data: "{{ site }}. IN A {{ dns_ip }}"'
+    insertafter: "# ansible-role-mit.nginx.site"
+  notify: Reload unbound
+

@@ -9,3 +9,6 @@
 - include_tasks: database.yml
   when: database is defined
 
+- include_tasks: dns.yml
+  when: dns_ip is defined
+
