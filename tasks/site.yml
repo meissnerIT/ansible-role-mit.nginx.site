@@ -11,10 +11,7 @@
     create_or_remove: "{{ 'Remove' if (state=='absent') else 'Create' }}"
     file_state_directory: "{{ 'absent' if (state=='absent') else 'directory' }}"
 
-#- name: Setting default for client_max_body_size
-#  set_fact:
-#    nginx_client_max_body_size: "{{ php_fpm_upload_limit|default(false) }}"
-#  when: nginx_client_max_body_size is not defined
+# - debug: var=nginx_client_max_body_size
 
 # Ensure default owner / group / mode (creating user fails without this)
 - name: "{{ create_or_remove }} /srv/www/{{ site }}"
