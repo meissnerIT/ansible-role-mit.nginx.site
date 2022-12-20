@@ -41,7 +41,8 @@
     name: "{{ database }}"
     state: present
 
-- name: Create database user {{ database }}
+# https://mariadb.com/kb/en/securing-connections-for-client-and-server/#requiring-tls
+- name: Create database user {{ database }}@% with REQUIRE SSL
   delegate_to: "{{ mit_nginx_site_db_host }}"
   mysql_user:
     login_unix_socket: /var/run/mysqld/mysqld.sock
@@ -53,4 +54,15 @@
     tls_requires:
       SSL:
     state: present
+  when: database_user_host == '%'
+
+- name: Create database user {{ database }}@localhost
+  delegate_to: "{{ mit_nginx_site_db_host }}"
+  mysql_user:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    name: "{{ database }}"
+    host: "localhost"
+    password: "{{ database_password }}"
+    priv: "{{ database }}.*:ALL"
+  when: database_user_host == 'localhost'
 
