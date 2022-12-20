@@ -3,6 +3,7 @@
 - name: Setting defaults (1/2)
   set_fact:
     state: "{{ state|default('present') }}"
+    update_facls: "{{ update_facls|default('yes') }}"
     update_facls_dir: "{{ 'ci' if (htdocslink is defined) else 'htdocs' }}"
 
 - name: Setting defaults (2/2)
@@ -185,6 +186,7 @@
     regexp: "^/srv/www/{{ site }}/{{ update_facls_dir }}"
     line: "/srv/www/{{ site }}/{{ update_facls_dir }} {{ group }} {{ group }}"
     state: "{{ state }}"
+  when: update_facls=='yes'
 
 - name: Allow execution of service commands via sudo
   template:
