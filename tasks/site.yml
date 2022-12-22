@@ -194,7 +194,7 @@
     dest: /etc/sudoers.d/local-group-{{ group }}
     mode: 0440
     validate: visudo -cf %s
-  when: state!='absent'
+  when: (create_sudoers|default(true)) and (state!='absent')
 
 - name: Remove sudoers file
   file:
