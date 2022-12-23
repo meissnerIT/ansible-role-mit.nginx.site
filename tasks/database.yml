@@ -1,15 +1,24 @@
 ---
 
+- name: Setting defaults (1/2)
+  set_fact:
+    state: "{{ state|default('present') }}"
+
+- name: Setting defaults (2/2)
+  set_fact:
+    create_or_remove: "{{ 'Remove' if (state=='absent') else 'Create' }}"
+
 - name: Check if database.txt exists
   stat:
     path: "/srv/www/{{ site }}/database.txt"
   register: database_txt_stat
+  when: state!='absent'
 
 - name: Create password
   set_fact:
     # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/password_lookup.html
     database_password: "{{ lookup('password', '/dev/null length=20') }}"
-  when: not database_txt_stat.stat.exists
+  when: (state!='absent') and (not database_txt_stat.stat.exists)
 
 - name: Create database.txt
   copy:
@@ -17,29 +26,31 @@
     dest: "/srv/www/{{ site }}/database.txt"
     group: "{{ group }}"
     mode: 0640
-  when: not database_txt_stat.stat.exists
+  when: (state!='absent') and (not database_txt_stat.stat.exists)
 
 - name: Read password from database.txt
   ansible.builtin.slurp:
     src: "/srv/www/{{ site }}/database.txt"
   register: database_txt_content
+  when: state!='absent'
 
 - name: Set variable database_password from database.txt
   set_fact:
     # b64decode: slurps content is base64 encoded
     # trim: If added via vi there might be an invisible "\n"
     database_password: "{{ database_txt_content.content | b64decode | trim }}"
+  when: state!='absent'
 
 #- name: Print returned information
 #  ansible.builtin.debug:
 #    msg: "{{ database_password }}"
 
-- name: Create database {{ database }}
+- name: "{{ create_or_remove }} database {{ database }}"
   delegate_to: "{{ mit_nginx_site_db_host }}"
   mysql_db:
     login_unix_socket: /var/run/mysqld/mysqld.sock
     name: "{{ database }}"
-    state: present
+    state: "{{ state }}"
 
 # https://mariadb.com/kb/en/securing-connections-for-client-and-server/#requiring-tls
 - name: Create database user {{ database }}@% with REQUIRE SSL
@@ -53,8 +64,7 @@
     # https://github.com/ansible-collections/community.mysql/search?q=tls_requires
     tls_requires:
       SSL:
-    state: present
-  when: database_user_host == '%'
+  when: (state!='absent') and (database_user_host == '%')
 
 - name: Create database user {{ database }}@localhost
   delegate_to: "{{ mit_nginx_site_db_host }}"
@@ -64,5 +74,14 @@
     host: "localhost"
     password: "{{ database_password }}"
     priv: "{{ database }}.*:ALL"
-  when: database_user_host == 'localhost'
+  when: (state!='absent') and (database_user_host == 'localhost')
+
+- name: "Remove database user {{ database }}@{{ database_user_host }}"
+  delegate_to: "{{ mit_nginx_site_db_host }}"
+  mysql_user:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    name: "{{ database }}"
+    host: "{{ database_user_host }}"
+    state: "{{ state }}"
+  when: state=='absent'
 
