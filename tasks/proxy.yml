@@ -1,5 +1,9 @@
 ---
 
+- name: Setting defaults
+  set_fact:
+    state: "{{ state|default('present') }}"
+
 - name: Create /etc/nginx/conf.d/server-{{ site }}.conf
   template:
     src: nginx-proxy-template.conf
