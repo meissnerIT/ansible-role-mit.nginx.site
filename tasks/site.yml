@@ -38,9 +38,10 @@
   when: (create_user|default(true)) and (state!='absent')
 
 - name: Adding www-data to group {{ group }}
-  shell: adduser www-data {{ group }}
-  register: adduser_wwwdata
-  changed_when: "'is already a member of' not in adduser_wwwdata.stdout"
+  ansible.builtin.user:
+    name: www-data
+    append: yes
+    groups: "{{ group }}"
   notify: Reload nginx
   when: state!='absent'
 
