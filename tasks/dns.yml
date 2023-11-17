@@ -1,17 +1,28 @@
 ---
 
-- name: Create /etc/hosts entry
-  lineinfile:
-    path: /etc/hosts
-    regexp: "^[0-9\\-].*{{ site }}"
-    line: "{{ dns_ip }} {{ site }}"
+#- name: Create /etc/hosts entry
+#  lineinfile:
+#    path: /etc/hosts
+#    regexp: "^[0-9\\-].*{{ site }}"
+#    line: "{{ dns_ip }} {{ site }}"
 
-- name: Create {{ site }} entry on dns server
-  delegate_to: "{{ mit_nginx_site_dns_host }}"
+- name: Create {{ site }} entry on dns1 server
+  delegate_to: "{{ mit_nginx_site_dns_host1 }}"
   lineinfile:
     path: /etc/unbound/unbound.conf.d/local.conf
     regexp: '    local-data: "{{ site }}. IN A "'
     line:   '    local-data: "{{ site }}. IN A {{ dns_ip }}"'
     insertafter: "# ansible-role-mit.nginx.site"
-  notify: Reload unbound
+  notify: Reload unbound on dns1
+
+- name: Copy unbound configuration to localhost
+  become: no
+  local_action: ansible.builtin.command scp {{ mit_nginx_site_dns_host1 }}:/etc/unbound/unbound.conf.d/local.conf private/unbound.conf.d/
+
+- name: Copy unbound configuration to dns2 ({{ mit_nginx_site_dns_host2 }})
+  delegate_to: "{{ mit_nginx_site_dns_host2 }}"
+  copy:
+    src: private/unbound.conf.d/local.conf
+    dest: /etc/unbound/unbound.conf.d/local.conf
+  notify: Reload unbound on dns2
 
