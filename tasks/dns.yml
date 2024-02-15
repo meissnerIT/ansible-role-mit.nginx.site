@@ -13,5 +13,6 @@
     regexp: '    local-data: "{{ site }}. IN A "'
     line:   '    local-data: "{{ site }}. IN A {{ dns_ip }}"'
     insertafter: "# ansible-role-mit.nginx.site"
+  when: mit_nginx_site_dns_host is defined
   notify: Reload unbound
 
