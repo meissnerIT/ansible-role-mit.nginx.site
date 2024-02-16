@@ -22,6 +22,7 @@
     line:   '    local-data: "{{ site }}. IN A {{ dns_ip }}"'
     insertafter: "# ansible-role-mit.nginx.site"
     state: "{{ state }}"
+  when: mit_nginx_site_dns_host1 is defined
   notify: Reload unbound on dns1
 
 - name: Copy unbound configuration to localhost
@@ -33,5 +34,6 @@
   copy:
     src: private/unbound.conf.d/local.conf
     dest: /etc/unbound/unbound.conf.d/local.conf
+  when: mit_nginx_site_dns_host2 is defined
   notify: Reload unbound on dns2
 
