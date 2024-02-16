@@ -1,18 +1,27 @@
 ---
 
+- name: Setting defaults (1/2)
+  set_fact:
+    state: "{{ state|default('present') }}"
+
+- name: Setting defaults (2/2)
+  set_fact:
+    create_or_remove: "{{ 'Remove' if (state=='absent') else 'Create' }}"
+
 #- name: Create /etc/hosts entry
 #  lineinfile:
 #    path: /etc/hosts
 #    regexp: "^[0-9\\-].*{{ site }}"
 #    line: "{{ dns_ip }} {{ site }}"
 
-- name: Create {{ site }} entry on dns1 server
+- name: "{{ create_or_remove }} {{ site }} entry on dns1 server"
   delegate_to: "{{ mit_nginx_site_dns_host1 }}"
   lineinfile:
     path: /etc/unbound/unbound.conf.d/local.conf
-    regexp: '    local-data: "{{ site }}. IN A "'
+    regexp: '    local-data: "{{ site }}. IN A '
     line:   '    local-data: "{{ site }}. IN A {{ dns_ip }}"'
     insertafter: "# ansible-role-mit.nginx.site"
+    state: "{{ state }}"
   notify: Reload unbound on dns1
 
 - name: Copy unbound configuration to localhost
