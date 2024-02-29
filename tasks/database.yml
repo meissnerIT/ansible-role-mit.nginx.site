@@ -46,7 +46,7 @@
 #    msg: "{{ database_password }}"
 
 - name: "{{ create_or_remove }} database {{ database }}"
-  delegate_to: "{{ mit_nginx_site_db_host }}"
+  delegate_to: "{{ database_host }}"
   mysql_db:
     login_unix_socket: /var/run/mysqld/mysqld.sock
     name: "{{ database }}"
@@ -54,7 +54,7 @@
 
 # https://mariadb.com/kb/en/securing-connections-for-client-and-server/#requiring-tls
 - name: Create database user {{ database }}@% with REQUIRE SSL
-  delegate_to: "{{ mit_nginx_site_db_host }}"
+  delegate_to: "{{ database_host }}"
   mysql_user:
     login_unix_socket: /var/run/mysqld/mysqld.sock
     name: "{{ database }}"
@@ -67,7 +67,7 @@
   when: (state!='absent') and (database_user_host == '%')
 
 - name: Create database user {{ database }}@localhost
-  delegate_to: "{{ mit_nginx_site_db_host }}"
+  delegate_to: "{{ database_host }}"
   mysql_user:
     login_unix_socket: /var/run/mysqld/mysqld.sock
     name: "{{ database }}"
@@ -77,7 +77,7 @@
   when: (state!='absent') and (database_user_host == 'localhost')
 
 - name: "Remove database user {{ database }}@{{ database_user_host }}"
-  delegate_to: "{{ mit_nginx_site_db_host }}"
+  delegate_to: "{{ database_host }}"
   mysql_user:
     login_unix_socket: /var/run/mysqld/mysqld.sock
     name: "{{ database }}"
