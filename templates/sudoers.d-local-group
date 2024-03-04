@@ -5,3 +5,7 @@
 %{{ group }}    ALL = (ALL:ALL) NOPASSWD: sudoedit /etc/nginx/conf.d/*{{ site }}*
 %{{ group }}    ALL = (ALL:ALL) NOPASSWD: sudoedit /etc/php/*/fpm/pool.d/*{{ site }}*.conf
 
+# php-switch-version
+%{{ group }}    ALL = (ALL:ALL) NOPASSWD: /bin/mv -v /etc/php/*/fpm/pool.d/{{ site }}.conf /etc/php/*/fpm/pool.d/{{ site }}.conf
+%{{ group }}    ALL = (ALL:ALL) NOPASSWD: /usr/sbin/service php-fpm* restart
+
