@@ -166,6 +166,13 @@
     state: absent
   when: state=='absent'
 
+- name: Check if there is a pool running on a different php version than {{ php_version }}
+  shell: ls /etc/php/*/fpm/pool.d/{{ site }}.conf|cut -d/ -f4|grep -v {{ php_version }}
+  register: cmd_ls_pool
+  changed_when: no
+  failed_when: cmd_ls_pool.stdout
+  when: state!='absent' and php_version is defined
+
 - name: Create /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
   template:
     src: php-fpm-pool-template.conf
