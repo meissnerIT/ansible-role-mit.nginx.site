@@ -226,3 +226,10 @@
     state: absent
   when: state=='absent'
 
+- name: Check fstab entries
+  command: grep -q {{ site }} /etc/fstab
+  register: grep_fstab
+  failed_when: grep_fstab.rc == 0
+  changed_when: no
+  when: state=='absent'
+
