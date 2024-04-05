@@ -128,6 +128,7 @@
     src: nginx-server-template.conf
     dest: /etc/nginx/conf.d/server-{{ site }}.conf
     force: "{{ nginx_overwrite_config | default('no') }}"
+  notify: Reload nginx
   when: state!='absent'
 
 - name: Remove /etc/nginx/conf.d/server-{{ site }}.conf
