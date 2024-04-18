@@ -2,6 +2,12 @@
 
 - name: Setting defaults (1/2)
   set_fact:
+    # This will only be used if database_user_host != 'localhost'
+    database_require_tls: "{{ database_require_tls | default(True) }}"
+    login_host: "{{ database_host|default(inventory_hostname) }}"
+    login_unix_socket: "{% if database_port is defined %}{% else %}/var/run/mysqld/mysqld.sock{% endif %}"
+    # login_port has to be int and not empty. If login_unix_socket is set port is not used.
+    login_port: "{{ database_port | default(0) }}"
     state: "{{ state|default('present') }}"
 
 - name: Setting defaults (2/2)
@@ -46,17 +52,30 @@
 #    msg: "{{ database_password }}"
 
 - name: "{{ create_or_remove }} database {{ database }}"
-  delegate_to: "{{ database_host }}"
+  delegate_to: "{{ login_host }}"
   mysql_db:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_unix_socket: "{{ login_unix_socket }}"
+    login_port: "{{ login_port }}"
     name: "{{ database }}"
     state: "{{ state }}"
 
+- name: Create database user {{ database }}@{{ database_user_host }}
+  delegate_to: "{{ login_host }}"
+  mysql_user:
+    login_unix_socket: "{{ login_unix_socket }}"
+    login_port: "{{ login_port }}"
+    name: "{{ database }}"
+    host: "{{ database_user_host }}"
+    password: "{{ database_password }}"
+    priv: "{{ database }}.*:ALL"
+  when: (state!='absent') and (database_user_host == 'localhost' or database_require_tls == False)
+
 # https://mariadb.com/kb/en/securing-connections-for-client-and-server/#requiring-tls
 - name: Create database user {{ database }}@% with REQUIRE SSL
-  delegate_to: "{{ database_host }}"
+  delegate_to: "{{ login_host }}"
   mysql_user:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_unix_socket: "{{ login_unix_socket }}"
+    login_port: "{{ login_port }}"
     name: "{{ database }}"
     host: "%"
     password: "{{ database_password }}"
@@ -64,22 +83,13 @@
     # https://github.com/ansible-collections/community.mysql/search?q=tls_requires
     tls_requires:
       SSL:
-  when: (state!='absent') and (database_user_host == '%')
-
-- name: Create database user {{ database }}@localhost
-  delegate_to: "{{ database_host }}"
-  mysql_user:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    name: "{{ database }}"
-    host: "localhost"
-    password: "{{ database_password }}"
-    priv: "{{ database }}.*:ALL"
-  when: (state!='absent') and (database_user_host == 'localhost')
+  when: state!='absent' and database_user_host == '%' and database_require_tls == True
 
 - name: "Remove database user {{ database }}@{{ database_user_host }}"
-  delegate_to: "{{ database_host }}"
+  delegate_to: "{{ login_host }}"
   mysql_user:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_unix_socket: "{{ login_unix_socket }}"
+    login_port: "{{ login_port }}"
     name: "{{ database }}"
     host: "{{ database_user_host }}"
     state: "{{ state }}"
