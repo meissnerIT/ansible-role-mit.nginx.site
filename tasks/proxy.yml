@@ -4,46 +4,46 @@
   set_fact:
     state: "{{ state|default('present') }}"
 
-- name: Create /etc/nginx/conf.d/server-{{ site }}.conf
+- name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf
   template:
     src: nginx-proxy-template.conf
-    dest: /etc/nginx/conf.d/server-{{ site }}.conf
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf"
     force: "{{ nginx_overwrite_config | default('no') }}"
   when: state!='absent'
 
-- name: Remove /etc/nginx/conf.d/server-{{ site }}.conf
+- name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf
   file:
-    dest: /etc/nginx/conf.d/server-{{ site }}.conf
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf"
     state: absent
   notify: Reload nginx
   when: state=='absent'
 
-- name: Create /etc/nginx/conf.d/server-{{ site }}.include
+- name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include
   copy:
     content: ''
-    dest: /etc/nginx/conf.d/server-{{ site }}.include
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include"
     force: no
   when: nginx_include_other|default(false) and state!='absent'
 
-- name: Remove /etc/nginx/conf.d/server-{{ site }}.include
+- name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include
   file:
-    dest: /etc/nginx/conf.d/server-{{ site }}.include
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include"
     state: absent
   notify: Reload nginx
   when: state=='absent'
 
-- name: Create /etc/nginx/conf.d/server-{{ site }}.htpasswd
+- name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd
   copy:
     content: ''
-    dest: /etc/nginx/conf.d/server-{{ site }}.htpasswd
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd"
     force: no
     group: www-data
     mode: 0640
   when: (nginx_create_htpasswd|default(false) or nginx_include_auth_basic|default(false)) and state!='absent'
 
-- name: Remove /etc/nginx/conf.d/server-{{ site }}.htpasswd
+- name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd
   file:
-    dest: /etc/nginx/conf.d/server-{{ site }}.htpasswd
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd"
     state: absent
   when: state=='absent'
 
