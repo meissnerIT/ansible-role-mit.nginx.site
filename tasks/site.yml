@@ -211,6 +211,28 @@
     state: absent
   when: state=='absent'
 
+- name: "Redirect mail to {{ group }} to /dev/null"
+  lineinfile:
+    path: /etc/aliases
+    regexp: "^{{ group }}: "
+    line: "{{ group }}: /dev/null"
+  notify: newaliases
+  when: typo3_bin is defined
+
+# https://docs.typo3.org/c/typo3/cms-scheduler/main/en-us//Installation/CronJob/Index.html
+- name: Set TYPO3_CONTEXT environment variable for cron
+  set_fact:
+    # Adds a space at the end
+    typo3_context_for_cron: "{{ 'TYPO3_CONTEXT=' + typo3_context + ' ' if typo3_context is defined else '' }}"
+
+- name: Install typo3 cronjob
+  ansible.builtin.cron:
+    user: "{{ group }}"
+    name: typo3 Scheduler by meissner.IT
+    minute: "*/15"
+    job: "{{ typo3_context_for_cron }}php{{ php_version }} /srv/www/{{ site }}/{{ typo3_bin }} scheduler:run"
+  when: typo3_bin is defined
+
 # https://docs.ansible.com/ansible/latest/user_guide/playbooks_handlers.html#controlling-when-handlers-run
 - name: Flush handlers
   meta: flush_handlers

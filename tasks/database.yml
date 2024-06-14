@@ -95,3 +95,7 @@
     state: "{{ state }}"
   when: state=='absent'
 
+- name: Check connection {{ inventory_hostname }} -> {{ login_host }}
+  command: mysql --ssl -h {{ login_host }} -u {{ database }} --password='{{ database_password }}' {{ database }} -e 'select 1'
+  changed_when: no
+

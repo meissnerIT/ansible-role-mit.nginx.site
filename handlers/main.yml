@@ -3,6 +3,10 @@
 # we might iterate if we have multiple dns:
 # https://stackoverflow.com/questions/39299065/does-ansible-delegate-to-work-with-handlers
 
+- name: newaliases
+  # 2023-11-16: postfix: /usr/bin/newaliases, sendmail: /usr/sbin/newaliases
+  command: newaliases
+
 - name: unbound configtest on dns1
   delegate_to: "{{ mit_nginx_site_dns_host1 }}"
   command: /usr/sbin/unbound-checkconf
