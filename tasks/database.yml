@@ -51,7 +51,8 @@
 #  ansible.builtin.debug:
 #    msg: "{{ database_password }}"
 
-- name: "{{ create_or_remove }} database {{ database }}"
+# Requires python3-pymysql and NOT python3-mysqldb!
+- name: "{{ create_or_remove }} database {{ database }} with python3-pymysql"
   delegate_to: "{{ login_host }}"
   mysql_db:
     login_unix_socket: "{{ login_unix_socket }}"
@@ -98,4 +99,5 @@
 - name: Check connection {{ inventory_hostname }} -> {{ login_host }}
   command: mysql --ssl -h {{ login_host }} -u {{ database }} --password='{{ database_password }}' {{ database }} -e 'select 1'
   changed_when: no
+  when: inventory_hostname != login_host
 
