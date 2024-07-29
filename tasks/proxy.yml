@@ -23,7 +23,7 @@
     content: ''
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include"
     force: no
-  when: nginx_include_other|default(false) and state!='absent'
+  when: nginx_include_other|default(false) and nginx_include_other == True and state!='absent'
 
 - name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include
   file:
