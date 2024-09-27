@@ -1,49 +1,47 @@
 ---
-
 - name: Setting defaults
-  set_fact:
-    state: "{{ state|default('present') }}"
+  ansible.builtin.set_fact:
+    state: "{{ state | default('present') }}"
 
 - name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf
-  template:
+  ansible.builtin.template:
     src: nginx-proxy-template.conf
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf"
     force: "{{ nginx_overwrite_config | default('no') }}"
   when: state!='absent'
 
 - name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf
-  file:
+  ansible.builtin.file:
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf"
     state: absent
   notify: Reload nginx
   when: state=='absent'
 
 - name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include
-  copy:
-    content: ''
+  ansible.builtin.copy:
+    content: ""
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include"
-    force: no
+    force: false
   when: nginx_include_other|default(false) and nginx_include_other == True and state!='absent'
 
 - name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include
-  file:
+  ansible.builtin.file:
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include"
     state: absent
   notify: Reload nginx
   when: state=='absent'
 
 - name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd
-  copy:
-    content: ''
+  ansible.builtin.copy:
+    content: ""
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd"
-    force: no
+    force: false
     group: www-data
-    mode: 0640
+    mode: "0640"
   when: (nginx_create_htpasswd|default(false) or nginx_include_auth_basic|default(false)) and state!='absent'
 
 - name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd
-  file:
+  ansible.builtin.file:
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd"
     state: absent
   when: state=='absent'
-

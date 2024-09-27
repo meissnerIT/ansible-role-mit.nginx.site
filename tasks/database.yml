@@ -1,47 +1,46 @@
 ---
-
 - name: Setting defaults (1/2)
-  set_fact:
+  ansible.builtin.set_fact:
     # This will only be used if database_user_host != 'localhost'
     database_require_tls: "{{ database_require_tls | default(True) }}"
-    login_host: "{{ database_host|default(inventory_hostname) }}"
+    login_host: "{{ database_host | default(inventory_hostname) }}"
     login_unix_socket: "{% if database_port is defined %}{% else %}/var/run/mysqld/mysqld.sock{% endif %}"
     # login_port has to be int and not empty. If login_unix_socket is set port is not used.
     login_port: "{{ database_port | default(0) }}"
-    state: "{{ state|default('present') }}"
+    state: "{{ state | default('present') }}"
 
 - name: Setting defaults (2/2)
-  set_fact:
-    create_or_remove: "{{ 'Remove' if (state=='absent') else 'Create' }}"
+  ansible.builtin.set_fact:
+    create_or_remove: "{{ 'Remove' if (state == 'absent') else 'Create' }}"
 
 - name: Check if database.txt exists
-  stat:
-    path: "/srv/www/{{ site }}/database.txt"
+  ansible.builtin.stat:
+    path: /srv/www/{{ site }}/database.txt
   register: database_txt_stat
   when: state!='absent'
 
 - name: Create password
-  set_fact:
+  ansible.builtin.set_fact:
     # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/password_lookup.html
     database_password: "{{ lookup('password', '/dev/null length=20') }}"
   when: (state!='absent') and (not database_txt_stat.stat.exists)
 
 - name: Create database.txt
-  copy:
+  ansible.builtin.copy:
     content: "{{ database_password }}"
-    dest: "/srv/www/{{ site }}/database.txt"
+    dest: /srv/www/{{ site }}/database.txt
     group: "{{ group }}"
-    mode: 0640
+    mode: "0640"
   when: (state!='absent') and (not database_txt_stat.stat.exists)
 
 - name: Read password from database.txt
   ansible.builtin.slurp:
-    src: "/srv/www/{{ site }}/database.txt"
+    src: /srv/www/{{ site }}/database.txt
   register: database_txt_content
   when: state!='absent'
 
 - name: Set variable database_password from database.txt
-  set_fact:
+  ansible.builtin.set_fact:
     # b64decode: slurps content is base64 encoded
     # trim: If added via vi there might be an invisible "\n"
     database_password: "{{ database_txt_content.content | b64decode | trim }}"
@@ -86,7 +85,7 @@
       SSL:
   when: state!='absent' and database_user_host == '%' and database_require_tls == True
 
-- name: "Remove database user {{ database }}@{{ database_user_host }}"
+- name: Remove database user {{ database }}@{{ database_user_host }}
   delegate_to: "{{ login_host }}"
   mysql_user:
     login_unix_socket: "{{ login_unix_socket }}"
@@ -97,7 +96,6 @@
   when: state=='absent'
 
 - name: Check connection {{ inventory_hostname }} -> {{ login_host }}
-  command: mysql --ssl -h {{ login_host }} -u {{ database }} --password='{{ database_password }}' {{ database }} -e 'select 1'
-  changed_when: no
+  ansible.builtin.command: mysql --ssl -h {{ login_host }} -u {{ database }} --password='{{ database_password }}' {{ database }} -e 'select 1'
+  changed_when: false
   when: inventory_hostname != login_host
-
