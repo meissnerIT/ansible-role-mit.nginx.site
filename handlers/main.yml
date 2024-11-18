@@ -1,27 +1,25 @@
 ---
-
 # we might iterate if we have multiple dns:
 # https://stackoverflow.com/questions/39299065/does-ansible-delegate-to-work-with-handlers
 
-- name: newaliases
+- name: Newaliases
   # 2023-11-16: postfix: /usr/bin/newaliases, sendmail: /usr/sbin/newaliases
-  command: newaliases
-
-- name: unbound configtest on dns1
+  ansible.builtin.command: newaliases
+- name: Unbound configtest on dns1
   delegate_to: "{{ mit_nginx_site_dns_host1 }}"
-  command: /usr/sbin/unbound-checkconf
+  ansible.builtin.command: /usr/sbin/unbound-checkconf
   register: unbound_configtest_dns1
   listen: Reload unbound on dns1
 
-- name: unbound configtest on dns2
+- name: Unbound configtest on dns2
   delegate_to: "{{ mit_nginx_site_dns_host2 }}"
-  command: /usr/sbin/unbound-checkconf
+  ansible.builtin.command: /usr/sbin/unbound-checkconf
   register: unbound_configtest_dns2
   listen: Reload unbound on dns2
 
 - name: Reload unbound on dns1
   delegate_to: "{{ mit_nginx_site_dns_host1 }}"
-  service:
+  ansible.builtin.service:
     name: unbound
     state: restarted
   when: unbound_configtest_dns1.rc == 0
@@ -29,9 +27,8 @@
 
 - name: Reload unbound on dns2
   delegate_to: "{{ mit_nginx_site_dns_host2 }}"
-  service:
+  ansible.builtin.service:
     name: unbound
     state: restarted
   when: unbound_configtest_dns2.rc == 0
   listen: Reload unbound on dns2
-

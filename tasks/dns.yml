@@ -1,12 +1,11 @@
 ---
-
 - name: Setting defaults (1/2)
-  set_fact:
-    state: "{{ state|default('present') }}"
+  ansible.builtin.set_fact:
+    state: "{{ state | default('present') }}"
 
 - name: Setting defaults (2/2)
-  set_fact:
-    create_or_remove: "{{ 'Remove' if (state=='absent') else 'Create' }}"
+  ansible.builtin.set_fact:
+    create_or_remove: "{{ 'Remove' if (state == 'absent') else 'Create' }}"
 
 #- name: Create /etc/hosts entry
 #  lineinfile:
@@ -16,24 +15,23 @@
 
 - name: "{{ create_or_remove }} {{ site }} entry on dns1 server"
   delegate_to: "{{ mit_nginx_site_dns_host1 }}"
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/unbound/unbound.conf.d/local.conf
     regexp: '    local-data: "{{ site }}. IN A '
-    line:   '    local-data: "{{ site }}. IN A {{ dns_ip }}"'
+    line: '    local-data: "{{ site }}. IN A {{ dns_ip }}"'
     insertafter: "# ansible-role-mit.nginx.site"
     state: "{{ state }}"
   when: mit_nginx_site_dns_host1 is defined
   notify: Reload unbound on dns1
 
 - name: Copy unbound configuration to localhost
-  become: no
-  local_action: ansible.builtin.command scp {{ mit_nginx_site_dns_host1 }}:/etc/unbound/unbound.conf.d/local.conf private/unbound.conf.d/
-
+  become: false
+  ansible.builtin.command: scp {{ mit_nginx_site_dns_host1 }}:/etc/unbound/unbound.conf.d/local.conf private/unbound.conf.d/
+  delegate_to: localhost
 - name: Copy unbound configuration to dns2 ({{ mit_nginx_site_dns_host2 }})
   delegate_to: "{{ mit_nginx_site_dns_host2 }}"
-  copy:
+  ansible.builtin.copy:
     src: private/unbound.conf.d/local.conf
     dest: /etc/unbound/unbound.conf.d/local.conf
   when: mit_nginx_site_dns_host2 is defined
   notify: Reload unbound on dns2
-

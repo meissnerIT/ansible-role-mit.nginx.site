@@ -1,110 +1,109 @@
 ---
-
 - name: Setting defaults (1/2)
-  set_fact:
-    state: "{{ state|default('present') }}"
-    update_facls: "{{ update_facls|default(True) }}"
+  ansible.builtin.set_fact:
+    state: "{{ state | default('present') }}"
+    update_facls: "{{ update_facls | default(True) }}"
     update_facls_dir: "{{ 'ci' if (htdocslink is defined) else 'htdocs' }}"
 
 - name: Setting defaults (2/2)
-  set_fact:
-    nginx_client_max_body_size: "{{ nginx_client_max_body_size|default(php_fpm_upload_limit|default(false)) }}"
-    create_or_remove: "{{ 'Remove' if (state=='absent') else 'Create' }}"
-    file_state_directory: "{{ 'absent' if (state=='absent') else 'directory' }}"
+  ansible.builtin.set_fact:
+    nginx_client_max_body_size: "{{ nginx_client_max_body_size | default(php_fpm_upload_limit | default(false)) }}"
+    create_or_remove: "{{ 'Remove' if (state == 'absent') else 'Create' }}"
+    file_state_directory: "{{ 'absent' if (state == 'absent') else 'directory' }}"
 
 # - debug: var=nginx_client_max_body_size
 
 # Ensure default owner / group / mode (creating user fails without this)
 - name: "{{ create_or_remove }} /srv/www/{{ site }}"
-  file:
+  ansible.builtin.file:
     path: /srv/www/{{ site }}
     state: "{{ file_state_directory }}"
   when: create_dir|default(true)
 
 - name: Creating group {{ group }}
-  group:
+  ansible.builtin.group:
     name: "{{ group }}"
-    system: yes
+    system: true
   when: state!='absent'
 
 - name: Creating user {{ group }}
-  user:
+  ansible.builtin.user:
     name: "{{ group }}"
     group: "{{ group }}"
     home: /srv/www/{{ site }}/htdocs
-    create_home: no # avoid skell files
+    create_home: false # avoid skell files
     shell: /bin/false
-    system: yes
+    system: true
   when: (create_user|default(true)) and (state!='absent')
 
 - name: Adding www-data to group {{ group }}
   ansible.builtin.user:
     name: www-data
-    append: yes
+    append: true
     groups: "{{ group }}"
   notify: Reload nginx
   when: state!='absent'
 
 - name: Creating deploy dir
-  file:
+  ansible.builtin.file:
     path: /srv/www/{{ site }}/ci
     state: directory
     owner: "{{ group }}"
     group: "{{ group }}"
-    mode: 0770
+    mode: "0770"
   when: state!='absent' and htdocslink is defined
 
 - name: Creating link to htdocs
-  file:
+  ansible.builtin.file:
     src: "{{ htdocslink }}"
     dest: /srv/www/{{ site }}/htdocs
     state: link
     owner: "{{ group }}"
     group: "{{ group }}"
-    follow: no  # avoid error messages if link does not exists yet
-    force: yes  # avoid error messages if link does not exists yet
+    follow: false # avoid error messages if link does not exists yet
+    force: true # avoid error messages if link does not exists yet
   when: state!='absent' and htdocslink is defined
 
 - name: Creating /srv/www/{{ site }}/htdocs
-  file:
+  ansible.builtin.file:
     path: /srv/www/{{ site }}/htdocs
     state: directory
     owner: "{{ group }}"
     group: "{{ group }}"
-    mode: 0770
+    mode: "0770"
   when: state!='absent' and htdocslink is not defined
 
 - name: Creating /srv/www/{{ site }}/logs
-  file:
+  ansible.builtin.file:
     path: /srv/www/{{ site }}/logs
     state: directory
     owner: root
     group: "{{ group }}"
-    mode: 0750
+    mode: "0750"
   when: state!='absent'
 
 - name: Creating /srv/www/{{ site }}/tmp
-  file:
+  ansible.builtin.file:
     path: /srv/www/{{ site }}/tmp/php
     state: directory
   when: state!='absent' and php_fpm_upload_limit is defined
 
 - name: Creating /srv/www/{{ site }}/tmp/nginx
-  file:
+  ansible.builtin.file:
     path: /srv/www/{{ site }}/tmp/nginx
     state: directory
     owner: www-data
     group: www-data
-    mode: 0770
+    mode: "0770"
   when: state!='absent' and php_fpm_upload_limit is defined
 
 - name: Creating /srv/www/{{ site }}/tmp/php
-  file:
+  ansible.builtin.file:
     path: /srv/www/{{ site }}/tmp/php
     state: directory
     owner: "{{ group }}"
     group: "{{ group }}"
-    mode: 0770
+    mode: "0770"
   when: state!='absent' and php_fpm_upload_limit is defined
 
 # doesn't work on session, don't know why
@@ -118,13 +117,13 @@
   when: state!='absent'
 
 - name: Check deprecated conf.d/ssl-site (without .include)
-  command: ls /etc/nginx/conf.d/ssl-{{ site }}
+  ansible.builtin.command: ls /etc/nginx/conf.d/ssl-{{ site }}
   register: cmd_ls
   failed_when: cmd_ls.rc == 0
-  changed_when: no
+  changed_when: false
 
 - name: Create /etc/nginx/conf.d/server-{{ site }}.conf
-  template:
+  ansible.builtin.template:
     src: nginx-server-template.conf
     dest: /etc/nginx/conf.d/server-{{ site }}.conf
     force: "{{ nginx_overwrite_config | default('no') }}"
@@ -132,50 +131,50 @@
   when: state!='absent'
 
 - name: Remove /etc/nginx/conf.d/server-{{ site }}.conf
-  file:
+  ansible.builtin.file:
     dest: /etc/nginx/conf.d/server-{{ site }}.conf
     state: absent
   notify: Reload nginx
   when: state=='absent'
 
 - name: Create /etc/nginx/conf.d/server-{{ site }}.include
-  copy:
-    content: ''
+  ansible.builtin.copy:
+    content: ""
     dest: /etc/nginx/conf.d/server-{{ site }}.include
-    force: no
+    force: false
   when: nginx_include_other|default(false) and nginx_include_other == True and state!='absent'
 
 - name: Remove /etc/nginx/conf.d/server-{{ site }}.include
-  file:
+  ansible.builtin.file:
     dest: /etc/nginx/conf.d/server-{{ site }}.include
     state: absent
   notify: Reload nginx
   when: state=='absent'
 
 - name: Create /etc/nginx/conf.d/server-{{ site }}.htpasswd
-  copy:
-    content: ''
+  ansible.builtin.copy:
+    content: ""
     dest: /etc/nginx/conf.d/server-{{ site }}.htpasswd
-    force: no
+    force: false
     group: www-data
-    mode: 0640
+    mode: "0640"
   when: (nginx_create_htpasswd|default(false) or nginx_include_auth_basic|default(false)) and state!='absent'
 
 - name: Remove /etc/nginx/conf.d/server-{{ site }}.htpasswd
-  file:
+  ansible.builtin.file:
     dest: /etc/nginx/conf.d/server-{{ site }}.htpasswd
     state: absent
   when: state=='absent'
 
 - name: Check if there is a pool running on a different php version than {{ php_version }}
-  shell: ls /etc/php/*/fpm/pool.d/{{ site }}.conf|cut -d/ -f4|grep -v {{ php_version }}
+  ansible.builtin.shell: ls /etc/php/*/fpm/pool.d/{{ site }}.conf|cut -d/ -f4|grep -v {{ php_version }}
   register: cmd_ls_pool
-  changed_when: no
+  changed_when: false
   failed_when: cmd_ls_pool.stdout
   when: state!='absent' and php_version is defined
 
 - name: Create /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
-  template:
+  ansible.builtin.template:
     src: php-fpm-pool-template.conf
     dest: /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
     force: "{{ php_fpm_overwrite_config | default('no') }}"
@@ -183,36 +182,36 @@
   when: state!='absent' and php_version is defined
 
 - name: Remove /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
-  file:
+  ansible.builtin.file:
     dest: /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
     state: absent
   notify: Reload php{{ php_version }}-fpm
   when: state=='absent'
 
 - name: Update /etc/update-facls.conf
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/update-facls.conf
-    regexp: "^/srv/www/{{ site }}/{{ update_facls_dir }}"
-    line: "/srv/www/{{ site }}/{{ update_facls_dir }} {{ group }} {{ group }}"
+    regexp: ^/srv/www/{{ site }}/{{ update_facls_dir }}
+    line: /srv/www/{{ site }}/{{ update_facls_dir }} {{ group }} {{ group }}
     state: "{{ state }}"
   when: update_facls
 
 - name: Allow execution of service commands via sudo
-  template:
-    src: sudoers.d-local-group
+  ansible.builtin.template:
+    src: etc/sudoers.d/local-group
     dest: /etc/sudoers.d/local-group-{{ group }}
-    mode: 0440
+    mode: "0440"
     validate: visudo -cf %s
   when: (create_sudoers|default(true)) and (state!='absent')
 
 - name: Remove sudoers file
-  file:
+  ansible.builtin.file:
     dest: /etc/sudoers.d/local-group-{{ group }}
     state: absent
   when: state=='absent'
 
-- name: "Redirect mail to {{ group }} to /dev/null"
-  lineinfile:
+- name: Redirect mail to {{ group }} to /dev/null
+  ansible.builtin.lineinfile:
     path: /etc/aliases
     regexp: "^{{ group }}: "
     line: "{{ group }}: /dev/null"
@@ -221,7 +220,7 @@
 
 # https://docs.typo3.org/c/typo3/cms-scheduler/main/en-us//Installation/CronJob/Index.html
 - name: Set TYPO3_CONTEXT environment variable for cron
-  set_fact:
+  ansible.builtin.set_fact:
     # Adds a space at the end
     typo3_context_for_cron: "{{ 'TYPO3_CONTEXT=' + typo3_context + ' ' if typo3_context is defined else '' }}"
 
@@ -235,24 +234,22 @@
 
 # https://docs.ansible.com/ansible/latest/user_guide/playbooks_handlers.html#controlling-when-handlers-run
 - name: Flush handlers
-  meta: flush_handlers
-
+  ansible.builtin.meta: flush_handlers
 - name: Remove user {{ group }}
-  user:
+  ansible.builtin.user:
     name: "{{ group }}"
     state: absent
   when: state=='absent'
 
 - name: Remove group {{ group }}
-  group:
+  ansible.builtin.group:
     name: "{{ group }}"
     state: absent
   when: state=='absent'
 
 - name: Check fstab entries
-  command: grep -q {{ site }} /etc/fstab
+  ansible.builtin.command: grep -q {{ site }} /etc/fstab
   register: grep_fstab
   failed_when: grep_fstab.rc == 0
-  changed_when: no
+  changed_when: false
   when: state=='absent'
-
