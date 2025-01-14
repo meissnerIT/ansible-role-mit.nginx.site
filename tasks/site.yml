@@ -1,6 +1,8 @@
 ---
 - name: Setting defaults (1/2)
   ansible.builtin.set_fact:
+    # If MAILTO is defined but empty (MAILTO=""), no mail will be sent.
+    crontab_mailto: "{{ crontab_mailto | default('') }}"
     state: "{{ state | default('present') }}"
     update_facls: "{{ update_facls | default(True) }}"
     update_facls_dir: "{{ 'ci' if (htdocslink is defined) else 'htdocs' }}"
@@ -14,10 +16,11 @@
 # - debug: var=nginx_client_max_body_size
 
 # Ensure default owner / group / mode (creating user fails without this)
-- name: "{{ create_or_remove }} /srv/www/{{ site }}"
+- name: "{{ create_or_remove }} /srv/www/{{ site }}" # noqa name
   ansible.builtin.file:
     path: /srv/www/{{ site }}
     state: "{{ file_state_directory }}"
+    mode: '755'
   when: create_dir|default(true)
 
 - name: Creating group {{ group }}
@@ -64,7 +67,7 @@
     force: true # avoid error messages if link does not exists yet
   when: state!='absent' and htdocslink is defined
 
-- name: Creating /srv/www/{{ site }}/htdocs
+- name: Creating /srv/www/{{ site }}/htdocs # noqa name
   ansible.builtin.file:
     path: /srv/www/{{ site }}/htdocs
     state: directory
@@ -73,7 +76,7 @@
     mode: "0770"
   when: state!='absent' and htdocslink is not defined
 
-- name: Creating /srv/www/{{ site }}/logs
+- name: Creating /srv/www/{{ site }}/logs # noqa name
   ansible.builtin.file:
     path: /srv/www/{{ site }}/logs
     state: directory
@@ -82,22 +85,23 @@
     mode: "0750"
   when: state!='absent'
 
-- name: Creating /srv/www/{{ site }}/tmp
+- name: Creating /srv/www/{{ site }}/tmp # noqa name
   ansible.builtin.file:
     path: /srv/www/{{ site }}/tmp/php
     state: directory
+    mode: '770'
   when: state!='absent' and php_fpm_upload_limit is defined
 
-- name: Creating /srv/www/{{ site }}/tmp/nginx
+- name: Creating /srv/www/{{ site }}/tmp/nginx # noqa name
   ansible.builtin.file:
     path: /srv/www/{{ site }}/tmp/nginx
     state: directory
     owner: www-data
     group: www-data
-    mode: "0770"
+    mode: '770'
   when: state!='absent' and php_fpm_upload_limit is defined
 
-- name: Creating /srv/www/{{ site }}/tmp/php
+- name: Creating /srv/www/{{ site }}/tmp/php # noqa name
   ansible.builtin.file:
     path: /srv/www/{{ site }}/tmp/php
     state: directory
@@ -107,7 +111,7 @@
   when: state!='absent' and php_fpm_upload_limit is defined
 
 # doesn't work on session, don't know why
-- name: Enable group adm to read /srv/www/{{ site }}/logs via ACL
+- name: Enable group adm to read /srv/www/{{ site }}/logs via ACL # noqa name
   acl:
     path: /srv/www/{{ site }}/logs/
     entity: adm
@@ -223,6 +227,13 @@
   ansible.builtin.set_fact:
     # Adds a space at the end
     typo3_context_for_cron: "{{ 'TYPO3_CONTEXT=' + typo3_context + ' ' if typo3_context is defined else '' }}"
+
+- name: Set MAILTO in crontab
+  ansible.builtin.cron:
+    env: true
+    name: MAILTO
+    job: "{{ crontab_mailto }}"
+    user: "{{ group }}"
 
 - name: Install typo3 cronjob
   ansible.builtin.cron:
