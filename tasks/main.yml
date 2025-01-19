@@ -1,11 +1,26 @@
 ---
-- ansible.builtin.set_fact:
+- name: Get nginx version
+  ansible.builtin.shell: nginx -v 2>&1 | cut -d/ -f2
+  register: nginx_version_installed
+  changed_when: false
+
+- name: Set nginx version for templates
+  ansible.builtin.set_fact:
+    # nginx_version_to_use: "{{ '1.18' if nginx_version_installed.stdout is version('1.25', '<') else '1.25' }}"
+    nginx_version: "{{ nginx_version_installed.stdout }}"
+
+- name: Set site and nginx version
+  ansible.builtin.set_fact:
     type: site
   when: type is not defined
 
-- ansible.builtin.include_tasks: "{{ type }}.yml"
-- ansible.builtin.include_tasks: database.yml
+- name: Process site / proxy
+  ansible.builtin.include_tasks: "{{ type }}.yml"
+
+- name: Process database
+  ansible.builtin.include_tasks: database.yml
   when: database is defined
 
-- ansible.builtin.include_tasks: dns.yml
+- name: Process dns
+  ansible.builtin.include_tasks: dns.yml
   when: dns_ip is defined

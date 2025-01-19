@@ -8,12 +8,14 @@
     src: nginx-proxy-template.conf
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf"
     force: "{{ nginx_overwrite_config | default('no') }}"
+    mode: '644'
   when: state!='absent'
 
 - name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf
   ansible.builtin.file:
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf"
     state: absent
+    mode: '644'
   notify: Reload nginx
   when: state=='absent'
 
@@ -22,6 +24,7 @@
     content: ""
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include"
     force: false
+    mode: '644'
   when: nginx_include_other|default(false) and nginx_include_other == True and state!='absent'
 
 - name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include
@@ -37,7 +40,7 @@
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd"
     force: false
     group: www-data
-    mode: "0640"
+    mode: "640"
   when: (nginx_create_htpasswd|default(false) or nginx_include_auth_basic|default(false)) and state!='absent'
 
 - name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd
