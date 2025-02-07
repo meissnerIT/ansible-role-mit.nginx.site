@@ -111,6 +111,7 @@
   when: state!='absent' and php_fpm_upload_limit is defined
 
 # doesn't work on session, don't know why
+# As of Ansible 2.0, this module only supports Linux distributions.
 - name: Enable group adm to read /srv/www/{{ site }}/logs via ACL # noqa name
   acl:
     path: /srv/www/{{ site }}/logs/
@@ -118,55 +119,57 @@
     etype: group
     permissions: rx
     state: present
-  when: state!='absent'
+  when: state!='absent' and ansible_system == 'Linux'
 
 - name: Check deprecated conf.d/ssl-site (without .include)
-  ansible.builtin.command: ls /etc/nginx/conf.d/ssl-{{ site }}
+  ansible.builtin.command: ls {{ etc_prefix }}/etc/nginx/conf.d/ssl-{{ site }}
   register: cmd_ls
   failed_when: cmd_ls.rc == 0
   changed_when: false
 
-- name: Create /etc/nginx/conf.d/server-{{ site }}.conf
+- name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf # noqa: name[template]
   ansible.builtin.template:
     src: nginx-server-template.conf
-    dest: /etc/nginx/conf.d/server-{{ site }}.conf
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf"
     force: "{{ nginx_overwrite_config | default('no') }}"
+    mode: "644"
   notify: Reload nginx
   when: state!='absent'
 
-- name: Remove /etc/nginx/conf.d/server-{{ site }}.conf
+- name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf # noqa: name[template]
   ansible.builtin.file:
-    dest: /etc/nginx/conf.d/server-{{ site }}.conf
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf"
     state: absent
   notify: Reload nginx
   when: state=='absent'
 
-- name: Create /etc/nginx/conf.d/server-{{ site }}.include
+- name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include # noqa: name[template]
   ansible.builtin.copy:
     content: ""
-    dest: /etc/nginx/conf.d/server-{{ site }}.include
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include"
     force: false
-  when: nginx_include_other|default(false) and nginx_include_other == True and state!='absent'
+    mode: "644"
+  when: nginx_include_other|default(false) and nginx_include_other and state!='absent'
 
-- name: Remove /etc/nginx/conf.d/server-{{ site }}.include
+- name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include # noqa: name[template]
   ansible.builtin.file:
-    dest: /etc/nginx/conf.d/server-{{ site }}.include
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include"
     state: absent
   notify: Reload nginx
   when: state=='absent'
 
-- name: Create /etc/nginx/conf.d/server-{{ site }}.htpasswd
+- name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd # noqa: name[template]
   ansible.builtin.copy:
     content: ""
-    dest: /etc/nginx/conf.d/server-{{ site }}.htpasswd
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd"
     force: false
     group: www-data
     mode: "0640"
   when: (nginx_create_htpasswd|default(false) or nginx_include_auth_basic|default(false)) and state!='absent'
 
-- name: Remove /etc/nginx/conf.d/server-{{ site }}.htpasswd
+- name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd # noqa: name[template]
   ansible.builtin.file:
-    dest: /etc/nginx/conf.d/server-{{ site }}.htpasswd
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd"
     state: absent
   when: state=='absent'
 
@@ -177,15 +180,16 @@
   failed_when: cmd_ls_pool.stdout
   when: state!='absent' and php_version is defined
 
-- name: Create /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
+- name: Create /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf # noqa: name[template]
   ansible.builtin.template:
     src: php-fpm-pool-template.conf
     dest: /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
     force: "{{ php_fpm_overwrite_config | default('no') }}"
+    mode: "644"
   notify: Reload php{{ php_version }}-fpm
   when: state!='absent' and php_version is defined
 
-- name: Remove /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
+- name: Remove /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf # noqa: name[template]
   ansible.builtin.file:
     dest: /etc/php/{{ php_version }}/fpm/pool.d/{{ site }}.conf
     state: absent
