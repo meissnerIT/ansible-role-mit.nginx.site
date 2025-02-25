@@ -3,38 +3,56 @@
   ansible.builtin.set_fact:
     state: "{{ state | default('present') }}"
 
-- name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf
+- name: Setting nginx_include_other defaults
+  ansible.builtin.set_fact:
+    nginx_include_other: true
+  when: nginx_include_other_template
+
+- name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf # noqa: name[template]
   ansible.builtin.template:
     src: nginx-proxy-template.conf
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf"
     force: "{{ nginx_overwrite_config | default('no') }}"
-    mode: '644'
+    mode: "644"
   when: state!='absent'
 
-- name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf
+- name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf # noqa: name[template]
   ansible.builtin.file:
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf"
     state: absent
-    mode: '644'
+    mode: "644"
   notify: Reload nginx
   when: state=='absent'
 
-- name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include
+- name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include # noqa: name[template]
+  ansible.builtin.template:
+    src: "{{ nginx_include_other_template }}"
+    dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include"
+    force: true
+    mode: "644"
+  when: >
+    nginx_include_other_template|default(false)
+    and state!='absent'
+
+- name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include # noqa: name[template]
   ansible.builtin.copy:
     content: ""
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include"
     force: false
-    mode: '644'
-  when: nginx_include_other|default(false) and nginx_include_other == True and state!='absent'
+    mode: "644"
+  when: >
+    nginx_include_other|default(false)
+    and nginx_include_other == 'True'
+    and state!='absent'
 
-- name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include
+- name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include # noqa: name[template]
   ansible.builtin.file:
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include"
     state: absent
   notify: Reload nginx
   when: state=='absent'
 
-- name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd
+- name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd # noqa: name[template]
   ansible.builtin.copy:
     content: ""
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd"
@@ -43,7 +61,7 @@
     mode: "640"
   when: (nginx_create_htpasswd|default(false) or nginx_include_auth_basic|default(false)) and state!='absent'
 
-- name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd
+- name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd # noqa: name[template]
   ansible.builtin.file:
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.htpasswd"
     state: absent

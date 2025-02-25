@@ -13,14 +13,19 @@
     create_or_remove: "{{ 'Remove' if (state == 'absent') else 'Create' }}"
     file_state_directory: "{{ 'absent' if (state == 'absent') else 'directory' }}"
 
+- name: Setting nginx_include_other defaults
+  ansible.builtin.set_fact:
+    nginx_include_other: true
+  when: nginx_include_other_template is defined and nginx_include_other_template
+
 # - debug: var=nginx_client_max_body_size
 
 # Ensure default owner / group / mode (creating user fails without this)
-- name: "{{ create_or_remove }} /srv/www/{{ site }}" # noqa name
+- name: "{{ create_or_remove }} /srv/www/{{ site }}" # noqa: name[template]
   ansible.builtin.file:
     path: /srv/www/{{ site }}
     state: "{{ file_state_directory }}"
-    mode: '755'
+    mode: "755"
   when: create_dir|default(true)
 
 - name: Creating group {{ group }}
@@ -67,7 +72,7 @@
     force: true # avoid error messages if link does not exists yet
   when: state!='absent' and htdocslink is defined
 
-- name: Creating /srv/www/{{ site }}/htdocs # noqa name
+- name: Creating /srv/www/{{ site }}/htdocs # noqa: name[template]
   ansible.builtin.file:
     path: /srv/www/{{ site }}/htdocs
     state: directory
@@ -76,7 +81,7 @@
     mode: "0770"
   when: state!='absent' and htdocslink is not defined
 
-- name: Creating /srv/www/{{ site }}/logs # noqa name
+- name: Creating /srv/www/{{ site }}/logs # noqa: name[template]
   ansible.builtin.file:
     path: /srv/www/{{ site }}/logs
     state: directory
@@ -85,23 +90,23 @@
     mode: "0750"
   when: state!='absent'
 
-- name: Creating /srv/www/{{ site }}/tmp # noqa name
+- name: Creating /srv/www/{{ site }}/tmp # noqa: name[template]
   ansible.builtin.file:
     path: /srv/www/{{ site }}/tmp/php
     state: directory
-    mode: '770'
+    mode: "770"
   when: state!='absent' and php_fpm_upload_limit is defined
 
-- name: Creating /srv/www/{{ site }}/tmp/nginx # noqa name
+- name: Creating /srv/www/{{ site }}/tmp/nginx # noqa: name[template]
   ansible.builtin.file:
     path: /srv/www/{{ site }}/tmp/nginx
     state: directory
     owner: www-data
     group: www-data
-    mode: '770'
+    mode: "770"
   when: state!='absent' and php_fpm_upload_limit is defined
 
-- name: Creating /srv/www/{{ site }}/tmp/php # noqa name
+- name: Creating /srv/www/{{ site }}/tmp/php # noqa: name[template]
   ansible.builtin.file:
     path: /srv/www/{{ site }}/tmp/php
     state: directory
@@ -112,7 +117,7 @@
 
 # doesn't work on session, don't know why
 # As of Ansible 2.0, this module only supports Linux distributions.
-- name: Enable group adm to read /srv/www/{{ site }}/logs via ACL # noqa name
+- name: Enable group adm to read /srv/www/{{ site }}/logs via ACL # noqa: name[template]
   acl:
     path: /srv/www/{{ site }}/logs/
     entity: adm
@@ -143,13 +148,18 @@
   notify: Reload nginx
   when: state=='absent'
 
+# Add nginx_include_other_template if needed
+
 - name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include # noqa: name[template]
-  ansible.builtin.copy:
-    content: ""
+  ansible.builtin.template:
+    src: "{{ nginx_include_other }}"
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include"
     force: false
     mode: "644"
-  when: nginx_include_other|default(false) and nginx_include_other and state!='absent'
+  when: >
+    nginx_include_other|default(false)
+    and nginx_include_other != 'True'
+    and state!='absent'
 
 - name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include # noqa: name[template]
   ansible.builtin.file:
@@ -174,7 +184,7 @@
   when: state=='absent'
 
 - name: Check if there is a pool running on a different php version than {{ php_version }}
-  ansible.builtin.shell: ls /etc/php/*/fpm/pool.d/{{ site }}.conf|cut -d/ -f4|grep -v {{ php_version }}
+  ansible.builtin.shell: set -o pipefail && ls /etc/php/*/fpm/pool.d/{{ site }}.conf|cut -d/ -f4|grep -v {{ php_version }}
   register: cmd_ls_pool
   changed_when: false
   failed_when: cmd_ls_pool.stdout
@@ -218,7 +228,7 @@
     state: absent
   when: state=='absent'
 
-- name: Redirect mail to {{ group }} to /dev/null
+- name: Redirect mail to {{ group }} to /dev/null # noqa: name[template]
   ansible.builtin.lineinfile:
     path: /etc/aliases
     regexp: "^{{ group }}: "
@@ -238,6 +248,7 @@
     name: MAILTO
     job: "{{ crontab_mailto }}"
     user: "{{ group }}"
+  when: crontab_mailto is defined
 
 - name: Install typo3 cronjob
   ansible.builtin.cron:
