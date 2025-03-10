@@ -1,3 +1,12 @@
+## Install
+
+To use this role with zfs features you'll need to install the collection
+`community.general`.
+
+```sh
+ansible-galaxy collection install community.general
+```
+
 ## Parameter
 
 - `nginx_ssl_include`: The name of the file to include, e.g.

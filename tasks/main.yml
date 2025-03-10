@@ -1,6 +1,8 @@
 ---
 - name: Get nginx version
-  ansible.builtin.shell: nginx -v 2>&1 | cut -d/ -f2
+  ansible.builtin.shell: set -o pipefail && nginx -v 2>&1 | cut -d/ -f2
+  args:
+    executable: "{{ default_shell }}"
   register: nginx_version_installed
   changed_when: false
 
@@ -11,8 +13,8 @@
 
 - name: Set site and nginx version
   ansible.builtin.set_fact:
-    type: site
-  when: type is not defined
+    create_dir: "{{ create_dir | default(mit_nginx_create_dir | default('true')) }}"
+    type: "{{ type | default('site') }}"
 
 - name: Process site / proxy
   ansible.builtin.include_tasks: "{{ type }}.yml"

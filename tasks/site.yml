@@ -12,6 +12,7 @@
     nginx_client_max_body_size: "{{ nginx_client_max_body_size | default(php_fpm_upload_limit | default(false)) }}"
     create_or_remove: "{{ 'Remove' if (state == 'absent') else 'Create' }}"
     file_state_directory: "{{ 'absent' if (state == 'absent') else 'directory' }}"
+    zfs_state_dataset: "{{ 'absent' if (state == 'absent') else 'present' }}"
 
 - name: Setting nginx_include_other defaults
   ansible.builtin.set_fact:
@@ -21,12 +22,20 @@
 # - debug: var=nginx_client_max_body_size
 
 # Ensure default owner / group / mode (creating user fails without this)
-- name: "{{ create_or_remove }} /srv/www/{{ site }}" # noqa: name[template]
+- name: "{{ create_or_remove }} directory /srv/www/{{ site }}" # noqa: name[template]
   ansible.builtin.file:
     path: /srv/www/{{ site }}
     state: "{{ file_state_directory }}"
     mode: "755"
-  when: create_dir|default(true)
+  when: create_dir|default("true") == "true"
+
+- name: "{{ create_or_remove }} zfs dataset for /srv/www/{{ site }}" # noqa: name[template]
+  ansible.builtin.zfs:
+    name: tank/www/{{ site }}
+    state: "{{ zfs_state_dataset }}"
+    extra_zfs_properties:
+      mountpoint: /srv/www/{{ site }}
+  when: create_dir|default("true") == "zfs"
 
 - name: Creating group {{ group }}
   ansible.builtin.group:
