@@ -46,12 +46,12 @@
     database_password: "{{ database_txt_content.content | b64decode | trim }}"
   when: state!='absent'
 
-#- name: Print returned information
+# - name: Print returned information
 #  ansible.builtin.debug:
 #    msg: "{{ database_password }}"
 
 # Requires python3-pymysql and NOT python3-mysqldb!
-- name: "{{ create_or_remove }} database {{ database }} with python3-pymysql"
+- name: "{{ create_or_remove }} database {{ database }} with python3-pymysql" # noqa: name[template]
   delegate_to: "{{ login_host }}"
   mysql_db:
     login_unix_socket: "{{ login_unix_socket }}"
@@ -59,7 +59,7 @@
     name: "{{ database }}"
     state: "{{ state }}"
 
-- name: Create database user {{ database }}@{{ database_user_host }}
+- name: Create database user {{ database }}@{{ database_user_host }} # noqa: name[template]
   delegate_to: "{{ login_host }}"
   mysql_user:
     login_unix_socket: "{{ login_unix_socket }}"
@@ -68,10 +68,10 @@
     host: "{{ database_user_host }}"
     password: "{{ database_password }}"
     priv: "{{ database }}.*:ALL"
-  when: (state!='absent') and (database_user_host == 'localhost' or database_require_tls == False)
+  when: (state!='absent') and (database_user_host == 'localhost' or database_require_tls == 'False')
 
 # https://mariadb.com/kb/en/securing-connections-for-client-and-server/#requiring-tls
-- name: Create database user {{ database }}@% with REQUIRE SSL
+- name: Create database user {{ database }}@% with REQUIRE SSL # noqa: name[template]
   delegate_to: "{{ login_host }}"
   mysql_user:
     login_unix_socket: "{{ login_unix_socket }}"
@@ -83,9 +83,9 @@
     # https://github.com/ansible-collections/community.mysql/search?q=tls_requires
     tls_requires:
       SSL:
-  when: state!='absent' and database_user_host == '%' and database_require_tls == True
+  when: state!='absent' and database_user_host == '%' and database_require_tls == 'True'
 
-- name: Remove database user {{ database }}@{{ database_user_host }}
+- name: Remove database user {{ database }}@{{ database_user_host }} # noqa: name[template]
   delegate_to: "{{ login_host }}"
   mysql_user:
     login_unix_socket: "{{ login_unix_socket }}"
@@ -95,7 +95,7 @@
     state: "{{ state }}"
   when: state=='absent'
 
-- name: Check connection {{ inventory_hostname }} -> {{ login_host }}
+- name: Check connection {{ inventory_hostname }} -> {{ login_host }} # noqa: name[template]
   ansible.builtin.command: mysql --ssl -h {{ login_host }} -u {{ database }} --password='{{ database_password }}' {{ database }} -e 'select 1'
   changed_when: false
-  when: inventory_hostname != login_host
+  when: state!=absent and inventory_hostname != login_host

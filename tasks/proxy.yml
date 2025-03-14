@@ -5,8 +5,8 @@
 
 - name: Setting nginx_include_other defaults
   ansible.builtin.set_fact:
-    nginx_include_other: true
-  when: nginx_include_other_template
+    nginx_include_other: "server-{{ site }}.include"
+  when: nginx_include_other_template is defined
 
 - name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.conf # noqa: name[template]
   ansible.builtin.template:

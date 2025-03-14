@@ -16,7 +16,7 @@
 
 - name: Setting nginx_include_other defaults
   ansible.builtin.set_fact:
-    nginx_include_other: true
+    nginx_include_other: "True"
   when: nginx_include_other_template is defined and nginx_include_other_template
 
 # - debug: var=nginx_client_max_body_size
@@ -30,9 +30,11 @@
   when: create_dir|default("true") == "true"
 
 - name: "{{ create_or_remove }} zfs dataset for /srv/www/{{ site }}" # noqa: name[template]
-  ansible.builtin.zfs:
+  community.general.zfs:
     name: tank/www/{{ site }}
-    state: "{{ zfs_state_dataset }}"
+    # Removing doesn't work if we have a bind mount
+    # state: "{{ zfs_state_dataset }}"
+    state: present
     extra_zfs_properties:
       mountpoint: /srv/www/{{ site }}
   when: create_dir|default("true") == "zfs"
@@ -157,17 +159,14 @@
   notify: Reload nginx
   when: state=='absent'
 
-# Add nginx_include_other_template if needed
-
 - name: Create {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include # noqa: name[template]
   ansible.builtin.template:
-    src: "{{ nginx_include_other }}"
+    src: "{{ nginx_include_other_template }}"
     dest: "{{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include"
     force: false
     mode: "644"
   when: >
-    nginx_include_other|default(false)
-    and nginx_include_other != 'True'
+    nginx_include_other_template is defined
     and state!='absent'
 
 - name: Remove {{ etc_prefix }}/etc/nginx/conf.d/server-{{ site }}.include # noqa: name[template]
@@ -259,12 +258,13 @@
     user: "{{ group }}"
   when: crontab_mailto is defined
 
-- name: Install typo3 cronjob
+- name: "{{ create_or_remove }} typo3 cronjob" # noqa: name[template]
   ansible.builtin.cron:
     user: "{{ group }}"
     name: typo3 Scheduler by meissner.IT
     minute: "*/15"
     job: "{{ typo3_context_for_cron }}php{{ php_version }} /srv/www/{{ site }}/{{ typo3_bin }} scheduler:run"
+    state: "{{ state }}"
   when: typo3_bin is defined
 
 # https://docs.ansible.com/ansible/latest/user_guide/playbooks_handlers.html#controlling-when-handlers-run
