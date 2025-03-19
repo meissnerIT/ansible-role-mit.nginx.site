@@ -29,6 +29,13 @@
     mode: "755"
   when: create_dir|default("true") == "true"
 
+# 2025-03-19, mm: There themes to be a bug i community.general.zfs which tries
+#     to create the zfs dataset even it exists. So we have to check.
+- name: Check if /srv/www/{{ site }} exists # noqa: name[template]
+  ansible.builtin.stat:
+    path: /srv/www/{{ site }}
+  register: srv_www_site_stat
+  when: create_dir|default("true") == "zfs"
 - name: "{{ create_or_remove }} zfs dataset for /srv/www/{{ site }}" # noqa: name[template]
   community.general.zfs:
     name: tank/www/{{ site }}
@@ -37,7 +44,7 @@
     state: present
     extra_zfs_properties:
       mountpoint: /srv/www/{{ site }}
-  when: create_dir|default("true") == "zfs"
+  when: create_dir|default("true") == "zfs" and not srv_www_site_stat.stat.exists
 
 - name: Creating group {{ group }}
   ansible.builtin.group:
@@ -191,8 +198,9 @@
     state: absent
   when: state=='absent'
 
-- name: Check if there is a pool running on a different php version than {{ php_version }}
-  ansible.builtin.shell: set -o pipefail && ls /etc/php/*/fpm/pool.d/{{ site }}.conf|cut -d/ -f4|grep -v {{ php_version }}
+- name: Check if there is a pool running on a different php version than {{ php_version }} # noqa: risky-shell-pipe
+  # `set -o pipefail` doesn't work at least on Debian, reason not evaluated.
+  ansible.builtin.shell: ls /etc/php/*/fpm/pool.d/{{ site }}.conf|cut -d/ -f4|grep -v {{ php_version }}
   register: cmd_ls_pool
   changed_when: false
   failed_when: cmd_ls_pool.stdout

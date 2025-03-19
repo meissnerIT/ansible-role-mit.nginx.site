@@ -98,4 +98,4 @@
 - name: Check connection {{ inventory_hostname }} -> {{ login_host }} # noqa: name[template]
   ansible.builtin.command: mysql --ssl -h {{ login_host }} -u {{ database }} --password='{{ database_password }}' {{ database }} -e 'select 1'
   changed_when: false
-  when: state!=absent and inventory_hostname != login_host
+  when: state!='absent' and inventory_hostname != login_host
