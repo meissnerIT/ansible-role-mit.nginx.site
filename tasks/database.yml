@@ -68,7 +68,7 @@
     host: "{{ database_user_host }}"
     password: "{{ database_password }}"
     priv: "{{ database }}.*:ALL"
-  when: (state!='absent') and (database_user_host == 'localhost' or database_require_tls == 'False')
+  when: (state!='absent') and (database_user_host == 'localhost' or not database_require_tls)
 
 # https://mariadb.com/kb/en/securing-connections-for-client-and-server/#requiring-tls
 - name: Create database user {{ database }}@% with REQUIRE SSL # noqa: name[template]
@@ -83,7 +83,7 @@
     # https://github.com/ansible-collections/community.mysql/search?q=tls_requires
     tls_requires:
       SSL:
-  when: state!='absent' and database_user_host == '%' and database_require_tls == 'True'
+  when: state!='absent' and database_user_host == '%' and database_require_tls
 
 - name: Remove database user {{ database }}@{{ database_user_host }} # noqa: name[template]
   delegate_to: "{{ login_host }}"
