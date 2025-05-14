@@ -110,9 +110,10 @@
 
 - name: Creating /srv/www/{{ site }}/tmp # noqa: name[template]
   ansible.builtin.file:
-    path: /srv/www/{{ site }}/tmp/php
+    path: /srv/www/{{ site }}/tmp/
     state: directory
-    mode: "770"
+    group: "{{ group }}"
+    mode: "750"
   when: state!='absent' and php_fpm_upload_limit is defined
 
 - name: Creating /srv/www/{{ site }}/tmp/nginx # noqa: name[template]
