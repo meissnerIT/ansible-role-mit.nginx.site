@@ -14,6 +14,7 @@
 - name: Set site and nginx version
   ansible.builtin.set_fact:
     create_dir: "{{ create_dir | default(mit_nginx_create_dir | default('true')) }}"
+    nginx_ssl_stapling: "{{ nginx_ssl_stapling | default(not nginx_include_acmesh | default('no')) }}"
     type: "{{ type | default('site') }}"
 
 - name: Process site / proxy
