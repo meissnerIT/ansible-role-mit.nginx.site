@@ -115,7 +115,7 @@
     state: directory
     group: "{{ group }}"
     mode: "750"
-  when: state!='absent' and php_fpm_upload_limit is defined
+  when: state!='absent' and nginx_client_max_body_size
 
 - name: Creating /srv/www/{{ site }}/tmp/nginx # noqa: name[template]
   ansible.builtin.file:
@@ -124,7 +124,7 @@
     owner: www-data
     group: www-data
     mode: "770"
-  when: state!='absent' and php_fpm_upload_limit is defined
+  when: state!='absent' and nginx_client_max_body_size
 
 - name: Creating /srv/www/{{ site }}/tmp/php # noqa: name[template]
   ansible.builtin.file:
