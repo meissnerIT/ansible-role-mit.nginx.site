@@ -6,6 +6,7 @@
     state: "{{ state | default('present') }}"
     update_facls: "{{ update_facls | default(True) }}"
     update_facls_dir: "{{ 'ci' if (htdocslink is defined) else 'htdocs' }}"
+    zfs_dataset_www: "{{ 'zroot/www' if (ansible_system == 'FreeBSD') else 'tank/www' }}"
 
 - name: Setting defaults (2/2)
   ansible.builtin.set_fact:
@@ -38,7 +39,7 @@
   when: create_dir|default("true") == "zfs"
 - name: "{{ create_or_remove }} zfs dataset for /srv/www/{{ site }}" # noqa: name[template]
   community.general.zfs:
-    name: tank/www/{{ site }}
+    name: "{{ zfs_dataset_www }}/{{ site }}"
     # Removing doesn't work if we have a bind mount
     # state: "{{ zfs_state_dataset }}"
     state: present
@@ -114,7 +115,7 @@
     state: directory
     group: "{{ group }}"
     mode: "750"
-  when: state!='absent' and php_fpm_upload_limit is defined
+  when: state!='absent' and nginx_client_max_body_size
 
 - name: Creating /srv/www/{{ site }}/tmp/nginx # noqa: name[template]
   ansible.builtin.file:
@@ -123,7 +124,7 @@
     owner: www-data
     group: www-data
     mode: "770"
-  when: state!='absent' and php_fpm_upload_limit is defined
+  when: state!='absent' and nginx_client_max_body_size
 
 - name: Creating /srv/www/{{ site }}/tmp/php # noqa: name[template]
   ansible.builtin.file:
@@ -223,9 +224,9 @@
   notify: Reload php{{ php_version }}-fpm
   when: state=='absent'
 
-- name: Update /etc/update-facls.conf
+- name: Update update-facls.conf
   ansible.builtin.lineinfile:
-    path: /etc/update-facls.conf
+    path: "{{ etc_prefix }}/etc/update-facls.conf"
     regexp: ^/srv/www/{{ site }}/{{ update_facls_dir }}
     line: /srv/www/{{ site }}/{{ update_facls_dir }} {{ group }} {{ group }}
     state: "{{ state }}"
@@ -236,14 +237,14 @@
 - name: Allow execution of service commands via sudo
   ansible.builtin.template:
     src: etc/sudoers.d/local-group
-    dest: /etc/sudoers.d/local-group-{{ group }}
+    dest: "{{ etc_prefix }}/etc/sudoers.d/local-group-{{ group }}"
     mode: "0440"
     validate: visudo -cf %s
   when: (create_sudoers|default(true)) and (state!='absent')
 
 - name: Remove sudoers file
   ansible.builtin.file:
-    dest: /etc/sudoers.d/local-group-{{ group }}
+    dest: "{{ etc_prefix }}/etc/sudoers.d/local-group-{{ group }}"
     state: absent
   when: state=='absent'
 
