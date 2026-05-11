@@ -229,6 +229,8 @@
     regexp: ^/srv/www/{{ site }}/{{ update_facls_dir }}
     line: /srv/www/{{ site }}/{{ update_facls_dir }} {{ group }} {{ group }}
     state: "{{ state }}"
+    create: true
+    mode: "0644"
   when: update_facls
 
 - name: Allow execution of service commands via sudo
