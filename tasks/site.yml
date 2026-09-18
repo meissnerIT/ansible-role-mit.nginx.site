@@ -63,6 +63,13 @@
     system: true
   when: (create_user|default(true)) and (state!='absent')
 
+- name: Adding user {{ group }} to {{ user_groups | default('') }} # noqa: name[template]
+  ansible.builtin.user:
+    name: "{{ group }}"
+    groups: "{{ user_groups }}"
+    append: true
+  when: (user_groups is defined) and (state!='absent')
+
 - name: Adding www-data to group {{ group }}
   ansible.builtin.user:
     name: www-data
