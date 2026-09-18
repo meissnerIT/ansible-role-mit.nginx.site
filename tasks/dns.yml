@@ -16,7 +16,7 @@
 - name: "{{ create_or_remove }} {{ site }} entry on dns1 server" # noqa: name[template]
   delegate_to: "{{ mit_nginx_site_dns_host1 }}"
   ansible.builtin.lineinfile:
-    path: /etc/unbound/unbound.conf.d/local.conf
+    path: "/usr/local/etc/unbound/unbound.conf.d/local.conf"
     regexp: '    local-data: "{{ site }}. IN A '
     line: '    local-data: "{{ site }}. IN A {{ dns_ip }}"'
     insertafter: "# ansible-role-mit.nginx.site"
@@ -26,7 +26,7 @@
 
 - name: Copy unbound configuration from {{ mit_nginx_site_dns_host1 }} to localhost # noqa: name[template]
   become: false
-  ansible.builtin.command: scp {{ mit_nginx_site_dns_host1 }}:/etc/unbound/unbound.conf.d/local.conf private/unbound.conf.d/
+  ansible.builtin.command: scp {{ mit_nginx_site_dns_host1 }}:/usr/local/etc/unbound/unbound.conf.d/local.conf private/unbound.conf.d/
   delegate_to: localhost
   changed_when: false
 - name: Copy unbound configuration to dns2 ({{ mit_nginx_site_dns_host2 }})

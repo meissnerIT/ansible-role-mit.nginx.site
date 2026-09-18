@@ -7,7 +7,7 @@
   ansible.builtin.command: newaliases
 - name: Unbound configtest on dns1
   delegate_to: "{{ mit_nginx_site_dns_host1 }}"
-  ansible.builtin.command: /usr/sbin/unbound-checkconf
+  ansible.builtin.command: /usr/local/sbin/unbound-checkconf
   register: unbound_configtest_dns1
   listen: Reload unbound on dns1
 
